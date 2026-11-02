@@ -28,8 +28,8 @@ from PIL import Image, ImageOps
 PHONE_DIR = "/sdcard/DCIM/Zmathscan"
 REPO = Path(Path.home() / "dev" / "py" / "studylog")
 CACHE = Path.home() / ".cache" / "studylog"
-MAX_SIDE = 1800        # px on the long side (~160 dpi for a letter page)
-JPEG_QUALITY = 70
+MAX_SIDE = 1300        # px on the long side (~160 dpi for a letter page)
+JPEG_QUALITY = 60
 # ---------------------------------------------------------------------------
 
 INBOX = CACHE / "inbox"
