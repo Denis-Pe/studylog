@@ -26,6 +26,7 @@ from PIL import Image, ImageOps
 
 # ---- configuration ---------------------------------------------------------
 PHONE_DIR = "/sdcard/DCIM/Zmathscan"
+PLACEHOLDER = "studylog-keep-album.png"  # never pulled or deleted; see below
 REPO = Path(Path.home() / "dev" / "py" / "studylog")
 CACHE = Path.home() / ".cache" / "studylog"
 MAX_SIDE = 1300        # px on the long side (~160 dpi for a letter page)
@@ -138,6 +139,24 @@ def adb_ready():
         return False
 
 
+def ensure_placeholder(names):
+    """Keep a dummy image in PHONE_DIR so the Gallery app doesn't hide the album.
+
+    Samsung's Gallery hides empty folders, and ingesting empties this one.
+    The media scan is needed because Gallery doesn't notice files pushed by adb.
+    """
+    if PLACEHOLDER in names:
+        return
+    CACHE.mkdir(parents=True, exist_ok=True)
+    local = CACHE / PLACEHOLDER
+    Image.new("L", (256, 256), 200).save(local)
+    remote = f"{PHONE_DIR}/{PLACEHOLDER}"
+    run(["adb", "push", str(local), remote])
+    run(["adb", "shell", "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE "
+         f"-d {shlex.quote('file://' + remote)}"])
+    print(f"added {PLACEHOLDER} to {PHONE_DIR}")
+
+
 def pull_from_phone():
     INBOX.mkdir(parents=True, exist_ok=True)
     if not adb_ready():
@@ -147,8 +166,10 @@ def pull_from_phone():
         listing = run(["adb", "shell", f"ls -1 {shlex.quote(PHONE_DIR)}"])
     except subprocess.CalledProcessError:
         die(f"can't list {PHONE_DIR} on the phone; create that folder first")
-    for name in filter(None, (l.strip() for l in listing.splitlines())):
-        if not (INBOX / name).exists():
+    names = [l.strip() for l in listing.splitlines() if l.strip()]
+    ensure_placeholder(names)
+    for name in names:
+        if name != PLACEHOLDER and not (INBOX / name).exists():
             run(["adb", "pull", "-a", f"{PHONE_DIR}/{name}", str(INBOX / name)])
             print(f"pulled {name}")
 
